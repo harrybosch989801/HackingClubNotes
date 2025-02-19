@@ -112,3 +112,111 @@ drew@Bosch ~/w/h/bash_exercises>
 ```
 
 
+## 2/18/25
+Definitions and Concepts:
+* Pipes and I/O redirection 
+  * Pipes -- pipes in bash redirect stdout from the previous command to stdin on the following command.
+  ``` 
+  root@wgtest:~# cat /etc/wireguard/wg0.conf | grep -i -v key
+  [Interface]
+  Address = 10.8.1.102/24
+
+  [Peer]
+  AllowedIPs = 10.8.1.0/24
+  Endpoint = 129.80.112.211:51820
+  PersistentKeepalive = 25
+  root@wgtest:~# 
+  ```
+  The first command printng the contents of wg0.conf to stdout.  This output is instead piped into stdin of grep which is then used to filter out the keys.
+  * I/O redirection -- redirect stdout/stderr/stdin to a file or file descriptor
+  ``` 
+  root@wgtest:/tmp# echo "hello world" > hello.txt
+  root@wgtest:/tmp# ls hello.txt 
+  hello.txt
+  root@wgtest:/tmp#
+  ```
+  The output of the echo command is written to the hello.txt file.
+
+  ``` 
+  root@wgtest:/tmp# find / -name passwd 2> /dev/null
+  /etc/pam.d/passwd
+  /etc/passwd
+
+  ```
+  The error output from the find command is sent to /dev/null (the linux black hole)
+* Reverse Shells -- In the Linux world, logging into a machine is colloquially referred to as "getting a shell".  Consequently, a "reverse" shell is when we force the machine we want to log into, to connect back to us.  I.e. the process is in reverse.
+  Once we get some kind of command injection on a target machine, a typical next step would be to try and execute a reverse shell to establish persistent access.  Next meetup we'll talk a lot more about reverse shells.
+  https://swisskyrepo.github.io/InternalAllTheThings/cheatsheets/shell-reverse-cheatsheet/#bash-tcp
+  
+* Hashing -- an irreversible one-way function that changes data into a fixed size blob of text.  Typically in the context of computers this is used for passwords, verifying data integrity, or indexing data (i.e. in a hashmap).  There are many different hashing algorithms.  Today we briefly talked about md5sum which is a weak algorithm for passwords, but useful for data integrity checks.
+
+Commands used today:
+* md5sum -- computes md5sum hash of stdin
+```
+root@wgtest:~# cat /etc/wireguard/wg0.conf |md5sum
+649bf03ad8aead657d7a9dd40998737e  -
+root@wgtest:~#
+```
+* head -- sends the first n lines of stdin to stdout
+```
+root@wgtest:~# cat /etc/passwd | head -n 3
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+root@wgtest:~# 
+```
+* tail -- sends the last n lines of stdin to stdout
+```
+root@wgtest:~# tail -n 3 /etc/passwd
+fwupd-refresh:x:990:990:Firmware update daemon:/var/lib/fwupd:/usr/sbin/nologin
+polkitd:x:989:989:User for polkitd:/:/usr/sbin/nologin
+ubuntu:x:1000:1000:Ubuntu:/home/ubuntu:/bin/bash
+root@wgtest:~# 
+```
+* find -- finds files in the system.  has a million options...  just google if you need anything fancy :)
+```
+root@wgtest:~# find / -name passwd 2>/dev/null
+/etc/pam.d/passwd
+/etc/passwd
+/usr/bin/passwd
+/usr/share/bash-completion/completions/passwd
+/usr/share/doc/passwd
+/usr/share/lintian/overrides/passwd
+root@wgtest:~#
+```
+* grep -- parse stdin using regular expressions/pattern matching.  very powerful tool with practice it will become your good friend.  Worth a google and some experimentation.
+```
+root@wgtest:~# grep root /etc/passwd   
+root:x:0:0:root:/root:/bin/bash      
+root@wgtest:~# cat /etc/passwd | grep -i 'root\|ubuntu'        
+root:x:0:0:root:/root:/bin/bash              
+ubuntu:x:1000:1000:Ubuntu:/home/ubuntu:/bin/bash         
+root@wgtest:~#
+
+drew@drahsin ~> grep '^.i.or$' /usr/share/dict/words
+Timor
+minor
+rigor
+vigor
+visor
+vizor
+drew@drahsin ~>
+```
+* ufw -- uncomplicated firewall.  default firewall interface for ubuntu.  details not important for now.  we simply used to disable/re-enable firewall
+* sort -- sorts stdin and sends it to stdout
+```
+root@wgtest:/usr/share/dict# sort /etc/passwd |head -n 3
+_apt:x:42:65534::/nonexistent:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+root@wgtest:/usr/share/dict#
+```
+* tr -- trims/deletes text
+* shuf -- choose n lines at random from stdin
+* cut -- another tool for trimming/deleting text
+```
+drew@drahsin ~/w/h/b/hashes> shuf -n 1 rockyou.txt |tr -d '\n' | md5sum|cut -d' ' -f1 
+3234f55b5b79bd36b6cdc559c55f3644
+drew@drahsin ~/w/h/b/hashes>
+```
+We use shuf to select a single record from the file rockyou.txt.  We send that line to tr and trim off the newline character.  Then we take the md5sum.  Then we tokenize the output on spaces and select the first field.
